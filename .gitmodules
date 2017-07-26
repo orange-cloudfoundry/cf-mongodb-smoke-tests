@@ -1,3 +1,3 @@
 [submodule "assets/cf-mongodb-example-app"]
 	path = assets/cf-mongodb-example-app
-	url = git@github.com:FoOTOo/cf-mongodb-example-app.git
+	url = https://github.com/FoOTOo/cf-mongodb-example-app.git
