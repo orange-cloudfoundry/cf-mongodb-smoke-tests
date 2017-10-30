@@ -7,8 +7,4 @@ go install -v github.com/onsi/ginkgo/ginkgo
 
 export CONFIG_PATH=${CONFIG_PATH:-$PWD/example-config.json}
 
-# Ginkgo compiles and runs binaries from /tmp which is 'noexec' on hardened
-# stemcells, so we use this as temporary directory instead.
-export TMPDIR=/var/vcap/data/tmp
-
 ginkgo readwrite -r -v -noColor=true -keepGoing=true -trace=true -slowSpecThreshold=300
