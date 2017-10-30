@@ -4,8 +4,8 @@ set -e
 set -x
 
 go install -v github.com/onsi/ginkgo/ginkgo
+go get github.com/onsi/gomega
 
-export CF_COLOR=false
-export CF_VERBOSE_OUTPUT=true
+export CONFIG_PATH=${CONFIG_PATH:-$PWD/example-config.json}
 
 ginkgo readwrite -r -v -noColor=true -keepGoing=true -trace=true -slowSpecThreshold=300
