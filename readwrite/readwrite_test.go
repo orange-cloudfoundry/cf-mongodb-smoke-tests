@@ -11,7 +11,7 @@ import (
 )
 
 var randUser, randPwd, randDb, randCol  = "Username","Password", "Database", "Collection"
-var info = "10.165.0.72:27017"   //127.0.0.1:27017 "10.165.0.72:27017"
+var info = config.Host + ":" + config.Port
 var session, err = mgo.Dial(info)
 var col = session.DB(randDb).C(randCol)
 var db = session.DB(randDb)

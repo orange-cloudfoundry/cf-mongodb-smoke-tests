@@ -12,6 +12,8 @@ import (
 
 type testConfig struct {
 	TimeoutScale                  float64 `json:"timeout_scale"`
+	Host                          string `json:"host"`
+	Port                          string `json:"port"`
 }
 
 func loadConfig(path string) (cfg testConfig) {
