@@ -11,7 +11,7 @@ import (
 )
 
 var randUser, randPwd, randDb, randCol  = "Username","Password", "Database", "Collection"
-var info = config.MongoHost + ":" + config.MongoPort
+var info = config.Mongo_Host + ":" + config.Mongo_Port
 var session, err = mgo.Dial(info)
 var col = session.DB(randDb).C(randCol)
 var db = session.DB(randDb)
