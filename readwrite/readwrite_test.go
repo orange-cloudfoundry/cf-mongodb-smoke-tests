@@ -79,25 +79,25 @@ var _ = Describe("access to data base", func(){
 
 					Context("When a document is inserted in the database ", func(){
 
-						It("should insert successfully a document in the database", func(){
+						It("should insert a new document", func(){
 							err= col.Insert(Jean)
 							Expect(err).NotTo(HaveOccurred())
 							search:= col.Find(bson.M{"Name":"Jean"})
 							Expect(search.Count()).To(Equal(1))
 						})
 
-						It("a document should be retrieved in the database", func(){
+						It("should retrieve an existing document", func(){
 							search:= col.Find(bson.M{"Name":"Bob"})
 							Expect(search.Count()).To(Equal(1))
 						})
 
-						It("should be able to update a document in the database", func(){
+						It("should be able to update an existing document", func(){
 							col.Update(bson.M{"Name": "Bob"}, bson.M{"$set": bson.M{"Name": "Pierre"}})
 							search:= col.Find(bson.M{"Name":"Pierre"})
 							Expect(search.Count()).To(Equal(1))
 						})
 
-						It("should be able to delete the inserted doc in the database", func(){
+						It("should be able to delete an existing document", func(){
 							err = col.Remove(bson.M{"Name":"Bob"})
 							Expect(err).NotTo(HaveOccurred())
 							search:= col.Find(bson.M{"Name":"Bob"})
