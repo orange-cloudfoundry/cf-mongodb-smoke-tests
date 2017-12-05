@@ -14,6 +14,8 @@ type testConfig struct {
 	TimeoutScale                  float64 `json:"timeout_scale"`
 	MongoHost                     string `json:"mongo_host"`
 	MongoPort                     string `json:"mongo_port"`
+	MongoRoot                     string `json:"mongo_root"`
+	MongoRootPassword             string `json:"mongo_root_password"`
 }
 
 func loadConfig(path string) (cfg testConfig) {
