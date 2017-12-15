@@ -1,3 +1,8 @@
 {
-	"timeout_scale": 1.0
+	"timeout_scale": 1.0,
+	"mongo_host": "127.0.0.1",
+	"mongo_port": "27017",
+	"mongo_root_username": "MongoRoot",
+	"mongo_root_password": "toto",
+	"mongo_replica_set_name": "rs0"
 }
