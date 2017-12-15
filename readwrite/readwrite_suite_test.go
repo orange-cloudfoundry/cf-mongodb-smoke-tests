@@ -3,15 +3,19 @@ package readwrite_test
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"os"
+	"testing"
 )
 
 type testConfig struct {
-	TimeoutScale                  float64 `json:"timeout_scale"`
+	TimeoutScale        float64 `json:"timeout_scale"`
+	MongoHost           string  `json:"mongo_host"`
+	MongoPort           string  `json:"mongo_port"`
+	MongoRoot           string  `json:"mongo_root_username"`
+	MongoRootPassword   string  `json:"mongo_root_password"`
+	MongoReplicaSetName string  `json:"mongo_replica_set_name"`
 }
 
 func loadConfig(path string) (cfg testConfig) {
