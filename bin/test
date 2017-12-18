@@ -7,5 +7,8 @@ go install -v github.com/onsi/ginkgo/ginkgo
 
 export CONFIG_PATH=${CONFIG_PATH:-$PWD/example-config.json}
 
-ginkgo readwrite -r -nodes=1 -v -noColor=true -keepGoing=true -trace=true \
+declare -a test_suites
+test_suites=("$@")
+
+ginkgo "${test_suites[@]}" -r -nodes=1 -v -noColor=true -keepGoing=true -trace=true \
 	-slowSpecThreshold=300 -timeout=600
