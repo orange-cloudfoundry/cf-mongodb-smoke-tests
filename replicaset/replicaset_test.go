@@ -192,11 +192,21 @@ var _ = Describe("MongoDB CRUD tests", func() {
 				if (nodes != 3) || (config.MongoReplicaSetEnable != 1) {
 					Skip("There is not 3 node or mongodb.replication.enable is not 'false'")
 				}
-				err := nodeSession.Run(bson.D{{"isMaster", 1}}, &rsConfNode) //seems to work when connecting to the former primary specifying the rs in auth params
+				//seems to work when connecting to the former primary specifying the rs in auth params
+				err := nodeSession.Run(bson.D{{"isMaster", 1}}, &rsConfNode)
 				Expect(err).NotTo(HaveOccurred())
 				var isNodeSec = rsConfNode["secondary"]
 				var isNodeSecondary = isNodeSec.(bool)
 				Expect(isNodeSecondary).To(BeTrue())
+				//second solution by connecting to all the cluster
+				/*		var hosts = rsConf["hosts"].([]array)
+							var i = 0
+							_,v := range hosts {
+						if v == oldPrimary {
+						i++
+						}
+						Expect(i).NotTo(Equal(0))
+				*/
 			})
 
 			It("The former primary node should contain the data", func() {
@@ -208,6 +218,16 @@ var _ = Describe("MongoDB CRUD tests", func() {
 				col := db.C(collectionName)
 				items := col.Find(bson.M{"Name": itemName})
 				Expect(items.Count()).To(Equal(1))
+				//or just
+				/*
+						By("toggling the session to slaveok")
+					monotonicSession.SetMode(mgo.Eventual, true)
+					db := monotonicSession.DB("TestDatabase-" + differentiator)
+					col := db.C("TestCollection")
+
+					By("finding the file on the least lagging secondary node")
+					items := col.Find(bson.M{"Name": itemName})
+					Expect(items.Count()).To(Equal(1)) */
 			})
 		})
 	})
