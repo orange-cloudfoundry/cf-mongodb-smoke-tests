@@ -1,20 +1,30 @@
 package readwrite_test
 
 import (
+	//"encoding/json"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"time"
 )
 
 var _ = Describe("MongoDB CRUD tests", func() {
 
+	var nodes = len(config.MongoHosts)
+	var addrs []string
+	for i := 0; i < nodes; i++ {
+		addrs = append(addrs, config.MongoHosts[i]+":"+config.MongoPort[i]) //for test
+		//addrs[i] = config.MongoHosts[i] + ":" + config.MongoPort
+	}
 	var connInfo = &mgo.DialInfo{
-		Addrs:          []string{config.MongoHost + ":" + config.MongoPort},
-		ReplicaSetName: config.MongoReplicaSetName,
+		Addrs:          addrs,
 		Username:       config.MongoRoot,
 		Password:       config.MongoRootPassword,
+		ReplicaSetName: config.MongoReplicaSetName,
+		Timeout:        600 * time.Second,
+		FailFast:       false,
 	}
 
 	var rootSession *mgo.Session
@@ -23,11 +33,13 @@ var _ = Describe("MongoDB CRUD tests", func() {
 	var differentiator = uuid.NewV4().String()
 
 	BeforeEach(func() {
+		By("connecting to the instance")
 		rootSession, err = mgo.DialWithInfo(connInfo)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
+		By("disconnecting from the instance")
 		rootSession.LogoutAll()
 		rootSession.Close()
 	})
@@ -44,17 +56,19 @@ var _ = Describe("MongoDB CRUD tests", func() {
 		}
 
 		BeforeEach(func() {
+			By("Upserting a user Admin")
 			db = rootSession.DB(databaseName)
 			err := db.UpsertUser(&admin)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
+			By("Removing the user")
 			err := db.RemoveUser(admin.Username)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should login successfully as that user", func() {
+		It("should log successfully as that user", func() {
 			err := db.Login(admin.Username, admin.Password)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -76,12 +90,14 @@ var _ = Describe("MongoDB CRUD tests", func() {
 				err := db.Login(admin.Username, admin.Password)
 				Expect(err).NotTo(HaveOccurred())
 
+				By("Inserting data")
 				col = db.C(collectionName)
 				err = col.Insert(item)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			AfterEach(func() {
+				By("dropping the collection")
 				col.DropCollection()
 			})
 

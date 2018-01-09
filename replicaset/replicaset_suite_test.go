@@ -1,4 +1,4 @@
-package readwrite_test
+package replicaset_test
 
 import (
 	"encoding/json"
@@ -17,6 +17,7 @@ type testConfig struct {
 	MongoRootPassword     string   `json:"mongo_root_password"`
 	MongoReplicaSetName   string   `json:"mongo_replica_set_name"`
 	MongoReplicaSetEnable int      `json:"mongo_replica_set_enable"`
+	MongoTestSuite        []string `json:"mongo_test_suite"`
 }
 
 func loadConfig(path string) (cfg testConfig) {
@@ -29,7 +30,6 @@ func loadConfig(path string) (cfg testConfig) {
 	if err = decoder.Decode(&cfg); err != nil {
 		fatal(err)
 	}
-
 	return
 }
 
