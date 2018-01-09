@@ -6,7 +6,7 @@
 	"mongo_root_password": "toto",
 	"mongo_replica_set_name": "rs0",
 	"mongo_replica_set_enable": 1,
-	"mongo_test_suite" : ["readwrite"]
+	"mongo_test_suite" : ["replicaset"]
 }
 
 
