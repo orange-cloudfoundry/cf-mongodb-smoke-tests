@@ -114,12 +114,13 @@ var _ = Describe("MongoDB CRUD tests", func() {
 	})
 
 	Context("When deploying a 3-nodes replicaset", func() {
-
+		var cfg = bson.M{}
 		BeforeEach(func() {
-			rootSession, err = mgo.DialWithInfo(connInfo)
-			monotonicSession = rootSession.Copy()
+			//rootSession, err = mgo.DialWithInfo(connInfo)
+			monotonicSession = rootSession.Clone()
 		})
 		AfterEach(func() {
+			monotonicSession.SetMode(mgo.Monotonic, true)
 			monotonicSession.Close()
 		})
 		It("should be able to read existing data on the secondary nodes in slaveok mode", func() {
@@ -158,10 +159,10 @@ var _ = Describe("MongoDB CRUD tests", func() {
 
 				By("reconnecting to the cluster")
 				time.Sleep(2 * 10e9)
-				rootSession, err = mgo.DialWithInfo(connInfo)
-				Expect(err).NotTo(HaveOccurred())
-				monotonicSession = rootSession.Copy()
-				monotonicSession.Refresh()
+				//rootSession, err = mgo.DialWithInfo(connInfo)
+				//Expect(err).NotTo(HaveOccurred())
+				//monotonicSession = rootSession.Copy()
+				//monotonicSession.Refresh()
 				restartNode = &mgo.DialInfo{
 					Addrs:          []string{oldPrimary},
 					Username:       config.MongoRoot,
