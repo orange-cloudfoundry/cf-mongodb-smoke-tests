@@ -22,8 +22,8 @@ var _ = Describe("MongoDB CRUD tests", func() {
 		Username:       config.MongoRoot,
 		Password:       config.MongoRootPassword,
 		ReplicaSetName: config.MongoReplicaSetName,
-		Timeout:        600 * time.Second,
-		FailFast:       false,
+		Timeout:        30 * time.Second,
+		FailFast:       true,
 	}
 
 	var rootSession *mgo.Session

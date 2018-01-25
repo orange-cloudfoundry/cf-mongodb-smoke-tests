@@ -29,7 +29,7 @@ var _ = Describe("MongoDB CRUD tests", func() {
 		Password:       config.MongoRootPassword,
 		ReplicaSetName: config.MongoReplicaSetName,
 		Timeout:        10 * time.Second,
-		FailFast:       false,
+		FailFast:       true,
 	}
 	var restartNode *mgo.DialInfo
 	var rootSession, monotonicSession, nodeSession *mgo.Session
