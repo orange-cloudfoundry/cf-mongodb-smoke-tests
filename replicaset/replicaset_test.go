@@ -143,6 +143,10 @@ var _ = Describe("MongoDB CRUD tests", func() {
 			var rsConfNode = bson.M{}
 
 			BeforeEach(func() {
+				By("skipping the non three nodes cases")
+				if nodes != 3 {
+					return
+				}
 
 				By("identifying the primary")
 				err := monotonicSession.Run(bson.D{{"isMaster", 1}}, &rsConf)
