@@ -15,7 +15,7 @@ var _ = Describe("MongoDB CRUD tests", func() {
 	var nodes = len(config.MongoHosts)
 	var addrs []string
 	for i := 0; i < nodes; i++ {
-		addrs = append(addrs, config.MongoHosts[i]+":"+config.MongoPort[0])
+		addrs = append(addrs, config.MongoHosts[i]+":"+config.MongoPorts[i])
 	}
 	var connInfo = &mgo.DialInfo{
 		Addrs:          addrs,
