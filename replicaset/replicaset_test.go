@@ -100,7 +100,7 @@ var _ = Describe("MongoDB CRUD tests", func() {
 
 			By("checking the status of the node")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(rsConf["setName"]).To(Equal("rs0"))
+			Expect(rsConf["setName"]).To(Equal(config.MongoReplicaSetName))
 		})
 
 		It("should be verified that it's a standalone when 'mongodb.replication.enable: false'", func() {
