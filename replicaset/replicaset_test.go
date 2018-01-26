@@ -20,7 +20,7 @@ var _ = Describe("MongoDB CRUD tests", func() {
 	var nodes = len(config.MongoHosts)
 	var addrs []string
 	for cpt := 0; cpt < nodes; cpt++ {
-		addrs = append(addrs, config.MongoHosts[cpt]+":"+config.MongoPort[0])
+		addrs = append(addrs, config.MongoHosts[cpt]+":"+config.MongoPorts[cpt])
 	}
 	fmt.Println(addrs) //for testing
 	var connInfo = &mgo.DialInfo{
@@ -29,7 +29,7 @@ var _ = Describe("MongoDB CRUD tests", func() {
 		Password:       config.MongoRootPassword,
 		ReplicaSetName: config.MongoReplicaSetName,
 		Timeout:        10 * time.Second,
-		FailFast:       false,
+		FailFast:       true,
 	}
 	var restartNode *mgo.DialInfo
 	var rootSession, monotonicSession, nodeSession *mgo.Session
@@ -100,7 +100,7 @@ var _ = Describe("MongoDB CRUD tests", func() {
 
 			By("checking the status of the node")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(rsConf["setName"]).To(Equal("rs0"))
+			Expect(rsConf["setName"]).To(Equal(config.MongoReplicaSetName))
 		})
 
 		It("should be verified that it's a standalone when 'mongodb.replication.enable: false'", func() {
@@ -143,6 +143,10 @@ var _ = Describe("MongoDB CRUD tests", func() {
 			var rsConfNode = bson.M{}
 
 			BeforeEach(func() {
+				By("skipping the non three nodes cases")
+				if nodes != 3 {
+					return
+				}
 
 				By("identifying the primary")
 				err := monotonicSession.Run(bson.D{{"isMaster", 1}}, &rsConf)
