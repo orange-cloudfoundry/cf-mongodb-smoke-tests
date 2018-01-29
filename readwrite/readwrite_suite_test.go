@@ -12,7 +12,7 @@ import (
 type testConfig struct {
 	TimeoutScale          float64  `json:"timeout_scale"`
 	MongoHosts            []string `json:"mongo_hosts"`
-	MongoPort             []string `json:"mongo_port"`
+	MongoPorts            []string `json:"mongo_ports"`
 	MongoRoot             string   `json:"mongo_root_username"`
 	MongoRootPassword     string   `json:"mongo_root_password"`
 	MongoReplicaSetName   string   `json:"mongo_replica_set_name"`
@@ -29,7 +29,6 @@ func loadConfig(path string) (cfg testConfig) {
 	if err = decoder.Decode(&cfg); err != nil {
 		fatal(err)
 	}
-
 	return
 }
 

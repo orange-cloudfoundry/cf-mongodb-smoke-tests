@@ -32,7 +32,7 @@ var _ = Describe("MongoDB CRUD tests", func() {
 		FailFast:       true,
 	}
 	var restartNode *mgo.DialInfo
-	var rootSession, monotonicSession, nodeSession *mgo.Session
+	var rootSession, Session, nodeSession *mgo.Session
 	var err error
 	var differentiator = uuid.NewV4().String()
 	var databaseName = "TestDatabase-" + differentiator
@@ -115,11 +115,10 @@ var _ = Describe("MongoDB CRUD tests", func() {
 
 	Context("When deploying a 3-nodes replicaset", func() {
 		BeforeEach(func() {
-			monotonicSession = rootSession.Copy()
+			Session = rootSession.Copy()
 		})
 		AfterEach(func() {
-			monotonicSession.SetMode(mgo.Monotonic, true)
-			monotonicSession.Close()
+			Session.Close()
 		})
 		It("should be able to read existing data on the secondary nodes in slaveok mode", func() {
 
@@ -129,7 +128,7 @@ var _ = Describe("MongoDB CRUD tests", func() {
 			}
 			By("toggling the session to slaveok")
 			monotonicSession.SetMode(mgo.Eventual, true)
-			db := monotonicSession.DB("TestDatabase-" + differentiator)
+			db := Session.DB("TestDatabase-" + differentiator)
 			col := db.C("TestCollection")
 
 			By("finding the file on the least lagging secondary node")
@@ -141,6 +140,43 @@ var _ = Describe("MongoDB CRUD tests", func() {
 			var oldPrimary string
 			var newPrimary string
 			var rsConfNode = bson.M{}
+
+			BeforeEach(func() {
+				By("skipping the non three nodes cases")
+				if nodes != 3 {
+					return
+				}
+
+				By("identifying the primary")
+				err := Session.Run(bson.D{{"isMaster", 1}}, &rsConf)
+				Expect(err).NotTo(HaveOccurred())
+				var oldPrim = rsConf["primary"]
+				oldPrimary = oldPrim.(string)
+
+				By("gracefully shutting down the primary")
+				res := bson.M{}
+				err = monotonicSession.DB("admin").Run(bson.D{{"shutdown", 1}}, &res)
+				Expect(err).To(Equal(io.EOF))
+
+				By("reconnecting to the cluster")
+				time.Sleep(4 * 10e9)
+				restartNode = &mgo.DialInfo{
+					Addrs:          []string{oldPrimary},
+					Username:       config.MongoRoot,
+					Password:       config.MongoRootPassword,
+					ReplicaSetName: config.MongoReplicaSetName,
+					Timeout:        10 * time.Second,
+					FailFast:       false,
+				}
+				nodeSession, err = mgo.DialWithInfo(restartNode)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("checking the new replicaset info")
+				err = monotonicSession.Run(bson.D{{"isMaster", 1}}, &rsConf)
+				monotonicSession.SetMode(mgo.Eventual, true)
+				newPrim := rsConf["primary"]
+				newPrimary = newPrim.(string)
+			})
 
 			It("A new primary should have takeover", func() {
 				if (nodes != 3) || (config.MongoReplicaSetEnable != 1) {
@@ -154,27 +190,11 @@ var _ = Describe("MongoDB CRUD tests", func() {
 				if (nodes != 3) || (config.MongoReplicaSetEnable != 1) {
 					Skip("There is not 3 node or mongodb.replication.enable is not 'false'")
 				}
-				By("identifying the primary")
-				err := monotonicSession.Run(bson.D{{"isMaster", 1}}, &rsConf)
+				err := nodeSession.Run(bson.D{{"isMaster", 1}}, &rsConfNode)
 				Expect(err).NotTo(HaveOccurred())
-				var oldPrim = rsConf["primary"]
-				oldPrimary = oldPrim.(string)
-
-				By("gracefully shutting down the primary")
-				res := bson.M{}
-				err = monotonicSession.DB("admin").Run(bson.D{{"shutdown", 1}}, &res)
-				Expect(err).To(Equal(io.EOF))
-
-				By("checking the former primary has rejoined the cluster")
-				time.Sleep(30 * 10e9)
-				restartNode = &mgo.DialInfo{
-					Addrs:          []string{oldPrimary},
-					Username:       config.MongoRoot,
-					Password:       config.MongoRootPassword,
-					ReplicaSetName: config.MongoReplicaSetName,
-					Timeout:        10 * time.Second,
-					FailFast:       false,
-				}
+				var isNodeSec = rsConfNode["secondary"]
+				var isNodeSecondary = isNodeSec.(bool)
+				Expect(isNodeSecondary).To(BeTrue())
 				//seems to work when connecting to the former primary specifying the rs in auth params/second solution by connecting to all the clusters
 				/*		var hosts = rsConf["hosts"].([]array)
 							var i = 0
@@ -184,18 +204,6 @@ var _ = Describe("MongoDB CRUD tests", func() {
 						}
 						Expect(i).NotTo(Equal(0))
 				*/
-				nodeSession, err = mgo.DialWithInfo(restartNode)
-				Expect(err).NotTo(HaveOccurred())
-
-				By("checking the former primary is a secondary")
-				err = monotonicSession.Run(bson.D{{"isMaster", 1}}, &rsConf) //try with rootSession
-				newPrim := rsConf["primary"]
-				newPrimary = newPrim.(string)
-				err := nodeSession.Run(bson.D{{"isMaster", 1}}, &rsConfNode)
-				Expect(err).NotTo(HaveOccurred())
-				var isNodeSec = rsConfNode["secondary"]
-				var isNodeSecondary = isNodeSec.(bool)
-				Expect(isNodeSecondary).To(BeTrue())
 			})
 
 			It("The former primary node should contain the data", func() {
