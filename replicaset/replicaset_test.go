@@ -1,7 +1,6 @@
 package replicaset_test
 
 import (
-	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/satori/go.uuid"
@@ -44,6 +43,7 @@ var _ = Describe("MongoDB replicaset tests", func() {
 	var shutD = bson.M{}
 
 	BeforeEach(func() {
+
 		By("connecting to the cluster")
 		rootSession, err = mgo.DialWithInfo(connInfo)
 		Expect(err).NotTo(HaveOccurred())
@@ -56,13 +56,14 @@ var _ = Describe("MongoDB replicaset tests", func() {
 	})
 
 	AfterEach(func() {
-		By("dropping collection, and closing all the sessions")
+
+		By("dropping collection, and closing the root Session")
 		col.DropCollection()
 		Expect(err).NotTo(HaveOccurred())
 		rootSession.Close()
 	})
 
-	Context("When deploying 1 instance", func() {
+	Context("when deploying 1 instance ", func() {
 
 		BeforeEach(func() {
 			err = rootSession.Run(bson.D{{"isMaster", 1}}, &isMas)
@@ -103,11 +104,11 @@ var _ = Describe("MongoDB replicaset tests", func() {
 
 			By("finding the file on the least lagging secondary node")
 			items := col.Find(bson.M{"Name": itemName})
-			//fmt.Print(items.Count()) //for tests
 			Expect(items.Count()).To(Equal(1))
 		})
 
 		Context("When shutting down the primary in a 3-nodes replicaset", func() {
+
 			var oldPrimary string
 			var newPrimary string
 			var liveservers []string
@@ -124,7 +125,6 @@ var _ = Describe("MongoDB replicaset tests", func() {
 				Expect(err).NotTo(HaveOccurred())
 				var oldPrim = isMas["primary"]
 				oldPrimary = oldPrim.(string)
-				//fmt.Println("oldprim" + oldPrimary) //for test
 
 				By("gracefully shutting down the primary")
 				primNode = &mgo.DialInfo{
@@ -136,10 +136,7 @@ var _ = Describe("MongoDB replicaset tests", func() {
 				}
 				primSession, err = mgo.DialWithInfo(primNode)
 				err = primSession.DB("admin").Run(bson.D{{"shutdown", 1}}, &shutD)
-				//fmt.Println("bson.M:", shutD) //for tests
-				//fmt.Println("error:", err)    // for tests
 				Expect(err).To(Or(Equal(io.EOF), HaveOccurred()))
-				//fmt.Println("shutdown ok") //for tests
 
 				By("reconnecting to the cluster")
 				t := time.Now()
@@ -158,9 +155,9 @@ var _ = Describe("MongoDB replicaset tests", func() {
 					}
 					d = time.Since(t)
 				}
-				//fmt.Println("time.Duration=", d)        // for test
-				//fmt.Println("newPrimary:" + newPrimary) // for test
 				Expect(newPrimary).ToNot(Equal(nil))
+
+				By("putting back the cluster to strong mode")
 				rootSession.SetMode(mgo.Strong, true)
 			})
 
@@ -181,25 +178,18 @@ var _ = Describe("MongoDB replicaset tests", func() {
 				if (nodes != 3) || (config.MongoReplicaSetEnable != 1) {
 					Skip("There is not 3 node or mongodb.replication.enable is not 'false'")
 				}
-				fmt.Println("last test=" + newPrimary) //for tests
 				Expect(newPrimary).ToNot(And(Equal(oldPrimary), Equal("nil")))
 			})
 
-			It("The former primary node should contain the data", func() {
+			It("The former primary node should contain the data", func() { //it's not targeting specifically the former primary but the best suited secondary, which might be sufficient for testing
 				if (nodes != 3) || (config.MongoReplicaSetEnable != 1) {
 					Skip("There is not 3 node or mongodb.replication.enable is not 'false'")
 				}
 				rootSession.SetMode(mgo.SecondaryPreferred, true)
 				items := col.Find(bson.M{"Name": itemName})
-				fmt.Print(items.Count()) //for tests
 				Expect(items.Count()).NotTo(Equal(0))
 				rootSession.SetMode(mgo.Strong, true)
 			})
-
-			/*It("alternative test", func() {
-				err = rootSession.Run(bson.D{{"replSetGetConfig", 1}}, &isMas)
-			}) */
-
 		})
 	})
 })
