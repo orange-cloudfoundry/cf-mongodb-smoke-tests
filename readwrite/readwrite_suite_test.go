@@ -29,7 +29,6 @@ func loadConfig(path string) (cfg testConfig) {
 	if err = decoder.Decode(&cfg); err != nil {
 		fatal(err)
 	}
-
 	return
 }
 
