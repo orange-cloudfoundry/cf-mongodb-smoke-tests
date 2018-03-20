@@ -10,4 +10,4 @@ export CONFIG_PATH=${CONFIG_PATH:-$PWD/example-config.json}
 declare  test_suites
 test_suites=("$@")
 
-ginkgo "${test_suites[@]}" -r -nodes=1 -v -noColor=false -keepGoing=true -trace=true --slowSpecThreshold=600 -timeout=600s
+ginkgo -r -nodes=1 -v -noColor=false -keepGoing=true -trace=true --slowSpecThreshold=300 -timeout=600s "${test_suites[@]}"

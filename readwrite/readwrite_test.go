@@ -1,7 +1,6 @@
 package readwrite_test
 
 import (
-	//"encoding/json"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/satori/go.uuid"
@@ -28,17 +27,17 @@ var _ = Describe("MongoDB CRUD tests", func() {
 
 	var rootSession *mgo.Session
 	var err error
-
-	var differentiator = uuid.NewV4().String()
+	uid, err := uuid.NewV4()
+	var differentiator = uid.String()
 
 	BeforeEach(func() {
-		By("connecting to the instance")
+		By("Connecting to the instance")
 		rootSession, err = mgo.DialWithInfo(connInfo)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		By("disconnecting from the instance")
+		By("Disconnecting from the instance")
 		rootSession.LogoutAll()
 		rootSession.Close()
 	})
@@ -96,29 +95,32 @@ var _ = Describe("MongoDB CRUD tests", func() {
 			})
 
 			AfterEach(func() {
-				By("dropping the collection")
+				By("Dropping the collection")
 				col.DropCollection()
 			})
 
 			It("should find an existing document", func() {
+				By("Looking for an existing document")
 				items := col.Find(bson.M{"Name": itemName})
-				Expect(items.Count()).To(Equal(1))
+				Expect(items.Count()).Should(Equal(1))
 			})
 
 			It("should update an existing document", func() {
+				By("Updating an existing document")
 				newItemName := "Pierre"
 				col.Update(bson.M{"Name": itemName}, bson.M{"$set": bson.M{"Name": newItemName}})
-
+				By("Looking for the updating document")
 				search := col.Find(bson.M{"Name": newItemName})
-				Expect(search.Count()).To(Equal(1))
+				Expect(search.Count()).Should(Equal(1))
 			})
 
 			It("should delete an existing document", func() {
+				By("Deleting an existing document")
 				err := col.Remove(bson.M{"Name": itemName})
 				Expect(err).NotTo(HaveOccurred())
-
+				By("Looking for deleted document")
 				items := col.Find(bson.M{"Name": itemName})
-				Expect(items.Count()).To(Equal(0))
+				Expect(items.Count()).Should(Equal(0))
 			})
 		})
 	})

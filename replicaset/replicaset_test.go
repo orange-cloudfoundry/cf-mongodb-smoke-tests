@@ -1,6 +1,7 @@
 package replicaset_test
 
 import (
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/satori/go.uuid"
@@ -28,7 +29,8 @@ var _ = Describe("MongoDB replicaset tests", func() {
 	var primNode *mgo.DialInfo
 	var rootSession, primSession *mgo.Session
 	var err error
-	var differentiator = uuid.NewV4().String()
+	uid, err := uuid.NewV4()
+	var differentiator = uid.String()
 	var databaseName = "TestDatabase-" + differentiator
 	var db *mgo.Database
 	var collectionName = "TestCollection"
@@ -39,17 +41,17 @@ var _ = Describe("MongoDB replicaset tests", func() {
 	}
 	var itemName = "some-item"
 	var item = Item{"", itemName}
-	var isMas = bson.M{}
+	var ResultisMas = bson.M{}
 	var shutD = bson.M{}
 
 	BeforeEach(func() {
 
-		By("connecting to the cluster")
+		By("Connecting to the cluster")
 		rootSession, err = mgo.DialWithInfo(connInfo)
 		Expect(err).NotTo(HaveOccurred())
 		db = rootSession.DB(databaseName)
 
-		By("writing data on the primary node")
+		By("Writing data on the primary node")
 		col = db.C(collectionName)
 		err = col.Insert(item)
 		Expect(err).NotTo(HaveOccurred())
@@ -57,143 +59,157 @@ var _ = Describe("MongoDB replicaset tests", func() {
 
 	AfterEach(func() {
 
-		By("dropping collection, and closing the root Session")
+		By("Dropping collection, and closing the root Session")
 		col.DropCollection()
 		Expect(err).NotTo(HaveOccurred())
 		rootSession.Close()
 	})
 
-	Context("when deploying 1 instance ", func() {
-
-		BeforeEach(func() {
-			err = rootSession.Run(bson.D{{"isMaster", 1}}, &isMas)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("should be verified that it's a replicaset when 'mongodb.replication.enable: true'", func() {
-
-			By("skipping the non 1 node cases")
-			if nodes != 1 || config.MongoReplicaSetEnable != 1 {
-				Skip("There is not 1 node")
-			}
-			By("checking the status of the node")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(isMas["setName"]).To(Equal(config.MongoReplicaSetName))
-		})
-
-		It("should be verified that it's a standalone when 'mongodb.replication.enable: false'", func() {
-
-			By("skipping the non 1 node cases")
-			if (nodes != 1) || (config.MongoReplicaSetEnable == 1) {
-				Skip("There is not 1 node or mongodb.replication.enable is not 'false'")
-			}
-			Expect(isMas["ok"]).To(Equal(0))
-		})
-	})
-
-	Context("When deploying a 3-nodes replicaset", func() {
-
-		It("should be able to read inserted data on the secondary nodes", func() {
-
-			By("skipping the non three nodes cases")
-			if (nodes != 3) || (config.MongoReplicaSetEnable != 1) {
-				Skip("There is not 3 node or mongodb.replication.enable is not 'false'")
-			}
-			By("toggling the session to eventual")
-			rootSession.SetMode(mgo.Eventual, true)
-
-			By("finding the file on the least lagging secondary node")
-			items := col.Find(bson.M{"Name": itemName})
-			Expect(items.Count()).To(Equal(1))
-		})
-
-		Context("When shutting down the primary in a 3-nodes replicaset", func() {
-
-			var oldPrimary string
-			var newPrimary string
-			var liveservers []string
+	if nodes == 1 {
+		Context("When deploying 1 instance ", func() {
 
 			BeforeEach(func() {
-				By("skipping the non three nodes cases")
-				if nodes != 3 {
-					return
-				}
-
-				By("skipping the non three nodes cases")
-				if nodes != 3 {
-					return
-				}
-
-				By("identifying the old primary")
-				err := rootSession.Run(bson.D{{"isMaster", 1}}, &isMas)
+				err = rootSession.Run(bson.D{{"isMaster", 1}}, &ResultisMas)
 				Expect(err).NotTo(HaveOccurred())
-				var oldPrim = isMas["primary"]
-				oldPrimary = oldPrim.(string)
+			})
+			if config.MongoReplicaSetEnable == 1 {
+				It("should be verified that it's a replicaset when 'mongodb.replication.enable: true'", func() {
+					By("Checking existence of replicaset")
+					Expect(ResultisMas["setName"]).To(Equal(config.MongoReplicaSetName))
+				})
+			} else {
+				It("should be verified that it's a standalone when 'mongodb.replication.enable: false'", func() {
+					Expect(ResultisMas["ok"]).To(Equal(1.0))
+					By("Checking no replicaset")
+					Expect(ResultisMas["setName"]).To(BeNil())
+				})
+			}
+		})
+	} else {
 
-				By("gracefully shutting down the primary")
-				primNode = &mgo.DialInfo{
-					Addrs:    []string{oldPrimary},
-					Username: config.MongoRoot,
-					Password: config.MongoRootPassword,
-					Timeout:  10 * time.Second,
-					FailFast: false,
+		Context("When deploying a multi-nodes replicaset", func() {
+			if config.MongoReplicaSetEnable != 1 {
+				It("should be verified that the parameter 'mongodb.replication.enable' is true", func() {
+					Expect(config.MongoReplicaSetEnable).To(Equal(1))
+				})
+				return
+			}
+
+			It("should be able to read inserted data on the secondary nodes", func() {
+
+				By("Toggling the session to Secondary")
+				rootSession.SetMode(mgo.Secondary, true)
+				err = rootSession.Run(bson.D{{"isMaster", 1}}, &ResultisMas)
+				Expect(err).NotTo(HaveOccurred())
+				By("Checking node type")
+				if ResultisMas["primary"].(string) == ResultisMas["me"].(string) {
+					fmt.Println("This node is not a secondary node")
 				}
-				primSession, err = mgo.DialWithInfo(primNode)
-				err = primSession.DB("admin").Run(bson.D{{"shutdown", 1}}, &shutD)
-				Expect(err).To(Or(Equal(io.EOF), HaveOccurred()))
+				Expect(ResultisMas["primary"].(string)).NotTo(Equal(ResultisMas["me"].(string)))
+				By("Finding the file on the least lagging secondary node")
+				items := col.Find(bson.M{"Name": itemName})
+				Expect(items.Count()).Should(Equal(1))
+			})
 
-				By("reconnecting to the cluster")
-				t := time.Now()
-				d := 0 * time.Second
-				newPrimary = "nil"
-				rootSession.SetMode(mgo.SecondaryPreferred, true)
-				for d <= 60*time.Second {
-					if err = rootSession.Run(bson.D{{"isMaster", 1}}, &isMas); err == nil {
-						err = rootSession.Run(bson.D{{"isMaster", 1}}, &isMas)
-						Expect(isMas["ok"]).NotTo(Equal(0))
-						if isMas["primary"] != nil && isMas["primary"] != oldPrimary {
-							newPrim := isMas["primary"]
-							newPrimary = newPrim.(string)
+			Context("When shutting down the primary in a multi-nodes replicaset", func() {
+				var oldPrimary string
+				var newPrimary string
+				var liveservers []string
+				const delay = 2 * time.Second
+
+				BeforeEach(func() {
+					By("Identifying the old primary")
+					err := rootSession.Run(bson.D{{"isMaster", 1}}, &ResultisMas)
+					Expect(err).NotTo(HaveOccurred())
+					oldPrimary = ResultisMas["primary"].(string)
+					By("Gracefully shutting down the primary")
+					primNode = &mgo.DialInfo{
+						Addrs:    []string{oldPrimary},
+						Username: config.MongoRoot,
+						Password: config.MongoRootPassword,
+						Timeout:  10 * time.Second,
+						FailFast: false,
+					}
+					primSession, err = mgo.DialWithInfo(primNode)
+					err = primSession.DB("admin").Run(bson.D{{"shutdown", 1}}, &shutD)
+					Expect(err).To(Or(Equal(io.EOF), HaveOccurred()))
+
+					By("Reconnecting to the cluster")
+					t := time.Now()
+					d := 0 * time.Second
+					newPrimary = "nil"
+					rootSession.SetMode(mgo.SecondaryPreferred, true)
+					for d <= 60*time.Second {
+						if err = rootSession.Run(bson.D{{"isMaster", 1}}, &ResultisMas); err == nil {
+							Expect(ResultisMas["ok"]).NotTo(Equal(0))
+							if ResultisMas["primary"] != nil && ResultisMas["primary"].(string) != oldPrimary {
+								newPrimary = ResultisMas["primary"].(string)
+								break
+							}
+						}
+						time.Sleep(delay)
+						d = time.Since(t)
+					}
+					Expect(newPrimary).ToNot(Equal("nil"))
+
+					By("Putting back the cluster to strong mode")
+					rootSession.SetMode(mgo.Strong, true)
+
+					By("Return of all the nodes in the cluster")
+					t = time.Now()
+					d = 0 * time.Second
+					for d <= 180*time.Second {
+						liveservers = rootSession.LiveServers()
+						if len(liveservers) == nodes {
 							break
 						}
+						time.Sleep(delay)
+						d = time.Since(t)
+
 					}
-					d = time.Since(t)
-				}
-				Expect(newPrimary).ToNot(Equal(nil))
+				})
 
-				By("putting back the cluster to strong mode")
-				rootSession.SetMode(mgo.Strong, true)
-			})
+				It("The former primary should have rejoined the cluster", func() {
+					By("Checking come back of the old primary node in the cluster")
+					Expect(liveservers).To(ContainElement(oldPrimary))
+				})
 
-			It("The former primary should have rejoined the cluster", func() {
-				t := time.Now()
-				d := 0 * time.Second
-				for d <= 10*time.Second {
-					liveservers = rootSession.LiveServers()
-					if len(liveservers) == 3 {
-						break
+				It("A new primary should have takeover", func() {
+					By("Checking Primary node change")
+					Expect(newPrimary).ToNot(Equal(oldPrimary))
+				})
+
+				It("The former primary node should contain the data", func() { //it's not targeting specifically the former primary but the best suited secondary, which might be sufficient for testing
+					By("Opening session on former primary")
+					oldprimNode := &mgo.DialInfo{
+						Addrs:    []string{oldPrimary},
+						Username: config.MongoRoot,
+						Password: config.MongoRootPassword,
+						Timeout:  10 * time.Second,
+						FailFast: false,
+						Direct:   true,
 					}
-					d = time.Since(t)
-				}
-				Expect(liveservers).To(ContainElement(oldPrimary))
-			})
-
-			It("A new primary should have takeover", func() {
-				if (nodes != 3) || (config.MongoReplicaSetEnable != 1) {
-					Skip("There is not 3 node or mongodb.replication.enable is not 'false'")
-				}
-				Expect(newPrimary).ToNot(And(Equal(oldPrimary), Equal("nil")))
-			})
-
-			It("The former primary node should contain the data", func() { //it's not targeting specifically the former primary but the best suited secondary, which might be sufficient for testing
-				if (nodes != 3) || (config.MongoReplicaSetEnable != 1) {
-					Skip("There is not 3 node or mongodb.replication.enable is not 'false'")
-				}
-				rootSession.SetMode(mgo.SecondaryPreferred, true)
-				items := col.Find(bson.M{"Name": itemName})
-				Expect(items.Count()).NotTo(Equal(0))
-				rootSession.SetMode(mgo.Strong, true)
+					oldprimSession, err := mgo.DialWithInfo(oldprimNode)
+					Expect(err).NotTo(HaveOccurred())
+					oldprimSession.SetMode(mgo.Eventual, true)
+					defer func() {
+						By("Closing session on former primary")
+						oldprimSession.Close()
+					}()
+					err = oldprimSession.Run(bson.D{{"isMaster", 1}}, &ResultisMas)
+					Expect(err).NotTo(HaveOccurred())
+					By("Checking the connection on the former primary node")
+					if oldPrimary != ResultisMas["me"].(string) {
+						fmt.Println("This node is not the former primary node")
+					}
+					Expect(ResultisMas["me"].(string)).To(Equal(oldPrimary))
+					By("Checking the former primary node is up to date")
+					olddb := oldprimSession.DB(databaseName)
+					oldcol := olddb.C(collectionName)
+					olditems := oldcol.Find(bson.M{"Name": itemName})
+					Expect(olditems.Count()).Should(Not(Equal(0)))
+				})
 			})
 		})
-	})
+	}
 })
