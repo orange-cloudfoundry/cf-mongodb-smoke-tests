@@ -17,6 +17,8 @@ type testConfig struct {
 	MongoRootPassword     string   `json:"mongo_root_password"`
 	MongoReplicaSetName   string   `json:"mongo_replica_set_name"`
 	MongoReplicaSetEnable int      `json:"mongo_replica_set_enable"`
+	MongoRequireSsl       int      `json:"mongo_require_ssl"`
+	MongoCACert           string   `json:"mongo_cert"`
 }
 
 func loadConfig(path string) (cfg testConfig) {

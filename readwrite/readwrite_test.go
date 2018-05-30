@@ -6,6 +6,11 @@ import (
 	"github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
+	"fmt"
+	"net"
 	"time"
 )
 
@@ -16,19 +21,36 @@ var _ = Describe("MongoDB CRUD tests", func() {
 	for i := 0; i < nodes; i++ {
 		addrs = append(addrs, config.MongoHosts[i]+":"+config.MongoPorts[i])
 	}
-	var connInfo = &mgo.DialInfo{
-		Addrs:          addrs,
-		Username:       config.MongoRoot,
-		Password:       config.MongoRootPassword,
-		ReplicaSetName: config.MongoReplicaSetName,
-		Timeout:        30 * time.Second,
-		FailFast:       true,
-	}
+	var connInfo = &mgo.DialInfo{}
+	connInfo.Addrs = addrs
+	connInfo.Username = config.MongoRoot
+	connInfo.Password = config.MongoRootPassword
+	connInfo.ReplicaSetName = config.MongoReplicaSetName
+	connInfo.Timeout = 30 * time.Second
+	connInfo.FailFast = true
+	
 
 	var rootSession *mgo.Session
 	var err error
 	uid, err := uuid.NewV4()
 	var differentiator = uid.String()
+	
+	if (config.MongoRequireSsl == 1) {
+		rootCerts := x509.NewCertPool()
+		if ca, err := ioutil.ReadFile(config.MongoCACert); err==nil {
+			rootCerts.AppendCertsFromPEM(ca)
+		}
+		tlsConfig := &tls.Config{}
+		tlsConfig.RootCAs = rootCerts
+
+		connInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+			if err != nil {
+				fmt.Println(err)
+			}
+			return conn, err
+		}
+	}
 
 	BeforeEach(func() {
 		By("Connecting to the instance")

@@ -6,5 +6,7 @@
 	"mongo_root_password": "toto",
 	"mongo_replica_set_name": "rs0",
 	"mongo_replica_set_enable": 1,
-	"mongo_test_suite": ["replicaset"]
+	"mongo_require_ssl": 1,
+	"mongo_cert": "/var/vcap/jobs/mongodb-acceptance-tests/ssl/CA.crt"
+
 }

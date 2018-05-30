@@ -7,7 +7,11 @@ import (
 	"github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"crypto/tls"
+	"crypto/x509"
 	"io"
+	"io/ioutil"
+	"net"
 	"time"
 )
 
@@ -18,15 +22,18 @@ var _ = Describe("MongoDB replicaset tests", func() {
 	for cpt := 0; cpt < nodes; cpt++ {
 		addrs = append(addrs, config.MongoHosts[cpt]+":"+config.MongoPorts[cpt])
 	}
-	var connInfo = &mgo.DialInfo{
-		Addrs:          addrs,
-		Username:       config.MongoRoot,
-		Password:       config.MongoRootPassword,
-		ReplicaSetName: config.MongoReplicaSetName,
-		Timeout:        10 * time.Second,
-		FailFast:       true,
-	}
+	var connInfo = &mgo.DialInfo{}
+	connInfo.Addrs = addrs
+	connInfo.Username = config.MongoRoot
+	connInfo.Password = config.MongoRootPassword
+	connInfo.ReplicaSetName = config.MongoReplicaSetName
+	connInfo.Timeout = 0 * time.Second
+	connInfo.FailFast = true
+	
 	var primNode *mgo.DialInfo
+	var rootCerts = x509.NewCertPool()
+	var tlsConfig = &tls.Config{}
+
 	var rootSession, primSession *mgo.Session
 	var err error
 	uid, err := uuid.NewV4()
@@ -43,6 +50,22 @@ var _ = Describe("MongoDB replicaset tests", func() {
 	var item = Item{"", itemName}
 	var ResultisMas = bson.M{}
 	var shutD = bson.M{}
+
+	if (config.MongoRequireSsl == 1) {
+		rootCerts = x509.NewCertPool()
+		if ca, err := ioutil.ReadFile(config.MongoCACert); err==nil {
+			rootCerts.AppendCertsFromPEM(ca)
+		}
+		tlsConfig.RootCAs = rootCerts
+
+		connInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+			conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+		//	if err != nil {
+		//		fmt.Println(err)
+		//	}
+			return conn, err
+		}
+	}
 
 	BeforeEach(func() {
 
@@ -123,12 +146,17 @@ var _ = Describe("MongoDB replicaset tests", func() {
 					Expect(err).NotTo(HaveOccurred())
 					oldPrimary = ResultisMas["primary"].(string)
 					By("Gracefully shutting down the primary")
-					primNode = &mgo.DialInfo{
-						Addrs:    []string{oldPrimary},
-						Username: config.MongoRoot,
-						Password: config.MongoRootPassword,
-						Timeout:  10 * time.Second,
-						FailFast: false,
+					primNode = &mgo.DialInfo{}
+					primNode.Addrs = []string{oldPrimary}
+					primNode.Username = config.MongoRoot
+					primNode.Password = config.MongoRootPassword
+					primNode.Timeout =  10 * time.Second
+					primNode.FailFast = false
+					if (config.MongoRequireSsl == 1) {
+						primNode.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+							conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+							return conn, err
+						}
 					}
 					primSession, err = mgo.DialWithInfo(primNode)
 					err = primSession.DB("admin").Run(bson.D{{"shutdown", 1}}, &shutD)
@@ -181,13 +209,18 @@ var _ = Describe("MongoDB replicaset tests", func() {
 
 				It("The former primary node should contain the data", func() { //it's not targeting specifically the former primary but the best suited secondary, which might be sufficient for testing
 					By("Opening session on former primary")
-					oldprimNode := &mgo.DialInfo{
-						Addrs:    []string{oldPrimary},
-						Username: config.MongoRoot,
-						Password: config.MongoRootPassword,
-						Timeout:  10 * time.Second,
-						FailFast: false,
-						Direct:   true,
+					oldprimNode := &mgo.DialInfo{}
+					oldprimNode.Addrs = []string{oldPrimary}
+					oldprimNode.Username = config.MongoRoot
+					oldprimNode.Password = config.MongoRootPassword
+					oldprimNode.Timeout =  10 * time.Second
+					oldprimNode.FailFast = false
+					oldprimNode.Direct = true
+					if (config.MongoRequireSsl == 1) {
+						oldprimNode.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+							conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+							return conn, err
+						}
 					}
 					oldprimSession, err := mgo.DialWithInfo(oldprimNode)
 					Expect(err).NotTo(HaveOccurred())
