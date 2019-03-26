@@ -7,6 +7,10 @@
 	"mongo_replica_set_name": "rs0",
 	"mongo_replica_set_enable": 1,
 	"mongo_require_ssl": 1,
-	"mongo_cert": "/var/vcap/jobs/mongodb-acceptance-tests/ssl/CA.crt"
-
+	"mongo_cert": "/var/vcap/jobs/mongodb-acceptance-tests/ssl/CA.crt",
+	"mongo_mongos_hosts": [""],
+	"mongo_mongos_ports": [""],
+	"mongo_cfgsrv_hosts": [""],
+	"mongo_cfgsrv_ports": [""],
+	"mongo_cfgsrv_replica_set_name": ""
 }
