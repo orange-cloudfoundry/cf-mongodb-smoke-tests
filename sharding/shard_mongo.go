@@ -25,8 +25,8 @@ var _ = Describe("MongoDB Sharding Tests", func() {
       connMongos.Username = config.MongoRoot
       connMongos.Password = config.MongoRootPassword
       connMongos.ReplicaSetName = ""
-      connMongos.Timeout = 0 * time.Second
-      connMongos.FailFast = true
+      connMongos.Timeout = 120 * time.Second
+      connMongos.FailFast = false
   
   for cpt := 0; cpt < len(config.MongoHosts); cpt++ {
       shardaddrs = append(shardaddrs, config.MongoHosts[cpt]+":"+config.MongoPorts[cpt])
@@ -36,8 +36,8 @@ var _ = Describe("MongoDB Sharding Tests", func() {
       connShard.Username = config.MongoRoot
       connShard.Password = config.MongoRootPassword
       connShard.ReplicaSetName = config.MongoReplicaSetName
-      connShard.Timeout = 0 * time.Second
-      connShard.FailFast = true
+      connShard.Timeout = 120 * time.Second
+      connShard.FailFast = false
   
   for cpt := 0; cpt < len(config.MongoCfgHosts); cpt++ {
       cfgaddrs = append(cfgaddrs, config.MongoCfgHosts[cpt]+":"+config.MongoCfgPorts[cpt])
@@ -47,8 +47,8 @@ var _ = Describe("MongoDB Sharding Tests", func() {
       connCfg.Username = config.MongoRoot
       connCfg.Password = config.MongoRootPassword
       connCfg.ReplicaSetName = config.MongoCfgReplicaSetName
-      connCfg.Timeout = 0 * time.Second
-      connCfg.FailFast = true 
+      connCfg.Timeout = 120 * time.Second
+      connCfg.FailFast = false 
  
   var rootCerts = x509.NewCertPool()
   var tlsConfig = &tls.Config{}
@@ -267,6 +267,6 @@ var _ = Describe("MongoDB Sharding Tests", func() {
             })
         })
 
-     })  
+     })
 })
 

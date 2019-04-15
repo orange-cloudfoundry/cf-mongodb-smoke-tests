@@ -27,9 +27,9 @@ var _ = Describe("MongoDB replicaset tests", func() {
 	connInfo.Username = config.MongoRoot
 	connInfo.Password = config.MongoRootPassword
 	connInfo.ReplicaSetName = config.MongoReplicaSetName
-	connInfo.Timeout = 0 * time.Second
-	connInfo.FailFast = true
-	
+	connInfo.Timeout = 120 * time.Second
+	connInfo.FailFast = false
+
 	var primNode *mgo.DialInfo
 	var rootCerts = x509.NewCertPool()
 	var tlsConfig = &tls.Config{}
@@ -119,7 +119,7 @@ var _ = Describe("MongoDB replicaset tests", func() {
 			}
 
 			It("should be able to read inserted data on the secondary nodes", func() {
-
+                                var item_count = 0
 				By("Toggling the session to Secondary")
 				rootSession.SetMode(mgo.Secondary, true)
 				err = rootSession.Run(bson.D{{"isMaster", 1}}, &ResultisMas)
@@ -130,8 +130,16 @@ var _ = Describe("MongoDB replicaset tests", func() {
 				}
 				Expect(ResultisMas["primary"].(string)).NotTo(Equal(ResultisMas["me"].(string)))
 				By("Finding the file on the least lagging secondary node")
-				items := col.Find(bson.M{"Name": itemName})
-				Expect(items.Count()).Should(Equal(1))
+				t := time.Now()
+				d :=  0 * time.Second
+				for d <= 60*time.Second {
+                                    item_count,err = col.Find(bson.M{"Name": itemName}).Count()
+                                    Expect(err).NotTo(HaveOccurred())
+                                    if (item_count != 0 ) { break }
+                                    time.Sleep(2 * time.Second)
+                                    d = time.Since(t)
+                                }
+                                Expect(item_count).Should(Equal(1))
 			})
 
 			Context("When shutting down the primary in a multi-nodes replicaset", func() {
