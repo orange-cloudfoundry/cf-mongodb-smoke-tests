@@ -158,7 +158,7 @@ var _ = Describe("MongoDB replicaset tests", func() {
 					primNode.Addrs = []string{oldPrimary}
 					primNode.Username = config.MongoRoot
 					primNode.Password = config.MongoRootPassword
-					primNode.Timeout =  10 * time.Second
+					primNode.Timeout =  120 * time.Second
 					primNode.FailFast = false
 					if (config.MongoRequireSsl == 1) {
 						primNode.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
@@ -221,7 +221,7 @@ var _ = Describe("MongoDB replicaset tests", func() {
 					oldprimNode.Addrs = []string{oldPrimary}
 					oldprimNode.Username = config.MongoRoot
 					oldprimNode.Password = config.MongoRootPassword
-					oldprimNode.Timeout =  10 * time.Second
+					oldprimNode.Timeout =  120 * time.Second
 					oldprimNode.FailFast = false
 					oldprimNode.Direct = true
 					if (config.MongoRequireSsl == 1) {
